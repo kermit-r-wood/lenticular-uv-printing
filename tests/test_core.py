@@ -6,6 +6,7 @@ from PIL import Image
 from lenticular_raster.core import (
     EUFYMAKE_E1_PRESET,
     OutputSpec,
+    build_phase_strip,
     generate_depth_map,
     interlace_images,
     lens_period_px,
@@ -89,3 +90,32 @@ def test_outputs_are_rejected_when_they_exceed_e1_bed() -> None:
         assert "exceeds eufyMake E1 printable area" in str(exc)
     else:
         raise AssertionError("expected E1 bed validation to fail")
+
+
+
+def test_build_phase_strip_returns_correct_dimensions() -> None:
+    red = solid(8, 4, (255, 0, 0))
+    blue = solid(8, 4, (0, 0, 255))
+    base_spec = OutputSpec(width_px=8, height_px=4, ppi=8, lpi=2, orientation="vertical")
+    phases = [-0.25, 0.0, 0.25]
+
+    interlaced_strip, depth_strip = build_phase_strip([red, blue], base_spec=base_spec, phases=phases)
+
+    assert interlaced_strip.mode == "RGB"
+    assert interlaced_strip.size == (8 * 3, 4)
+    assert depth_strip.mode == "I;16"
+    assert depth_strip.size == (8 * 3, 4)
+
+
+def test_build_phase_strip_different_phases_produce_different_columns() -> None:
+    red = solid(8, 4, (255, 0, 0))
+    blue = solid(8, 4, (0, 0, 255))
+    base_spec = OutputSpec(width_px=8, height_px=4, ppi=8, lpi=2, orientation="vertical")
+
+    strip, _ = build_phase_strip([red, blue], base_spec=base_spec, phases=[-0.25, 0.25])
+
+    arr = np.asarray(strip)
+    # Bottom rows (below label area) of block 0 and block 1 should differ
+    block0_col = arr[3, 0]
+    block1_col = arr[3, 8]
+    assert not np.array_equal(block0_col, block1_col)

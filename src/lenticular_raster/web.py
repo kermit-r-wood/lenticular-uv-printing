@@ -13,7 +13,9 @@ from PIL import Image
 
 from lenticular_raster.core import (
     EUFYMAKE_E1_PRESET,
+    DEFAULT_PHASES,
     OutputSpec,
+    build_phase_strip,
     generate_depth_map,
     interlace_images,
     lens_period_px,
@@ -50,6 +52,13 @@ def create_app(output_root: str | Path = DEFAULT_OUTPUT_ROOT) -> FastAPI:
                     "ppi": EUFYMAKE_E1_PRESET.ppi,
                     "lpi": 60,
                     "phase": 0,
+                    "max_depth_value": 65535,
+                },
+                "calibrate_defaults": {
+                    "block_mm": 20,
+                    "ppi": EUFYMAKE_E1_PRESET.ppi,
+                    "lpi": 60,
+                    "phases": ",".join(str(p) for p in DEFAULT_PHASES),
                     "max_depth_value": 65535,
                 },
             },
@@ -150,6 +159,72 @@ def create_app(output_root: str | Path = DEFAULT_OUTPUT_ROOT) -> FastAPI:
             raise HTTPException(status_code=404, detail="文件不存在")
         disposition = "inline" if inline else "attachment"
         return FileResponse(path, media_type="image/png", filename=filename, content_disposition_type=disposition)
+
+    @app.post("/calibrate")
+    async def calibrate(
+        images: Annotated[list[UploadFile], File()],
+        block_mm: Annotated[float, Form()],
+        ppi: Annotated[int, Form()],
+        lpi: Annotated[float, Form()],
+        orientation: Annotated[str, Form()],
+        phases: Annotated[str, Form()],
+        profile: Annotated[str, Form()],
+        max_depth_value: Annotated[int, Form()],
+    ):
+        if len(images) < 2:
+            raise HTTPException(status_code=400, detail="至少需要上传 2 张输入图片")
+
+        try:
+            phase_list = [float(p.strip()) for p in phases.split(",") if p.strip()]
+        except ValueError:
+            raise HTTPException(status_code=400, detail="相位格式错误，请用逗号分隔的数字")
+        if not phase_list:
+            raise HTTPException(status_code=400, detail="至少需要一个相位值")
+
+        block_px, _ = size_px_from_mm(block_mm, block_mm, ppi)
+        base_spec = OutputSpec(
+            width_px=block_px,
+            height_px=block_px,
+            ppi=ppi,
+            lpi=lpi,
+            orientation=_orientation(orientation),
+            phase_pitch=0.0,
+            depth_profile=_profile(profile),
+        )
+
+        job_id = uuid.uuid4().hex
+        job_dir = root / job_id
+        upload_dir = job_dir / "uploads"
+        upload_dir.mkdir(parents=True)
+
+        loaded_images = []
+        for index, upload in enumerate(images, start=1):
+            suffix = Path(upload.filename or f"image-{index}.png").suffix or ".png"
+            upload_path = upload_dir / f"image-{index}{suffix}"
+            upload_path.write_bytes(await upload.read())
+            loaded_images.append(Image.open(upload_path).convert("RGB"))
+
+        interlaced_strip, depth_strip = build_phase_strip(
+            loaded_images, base_spec=base_spec, phases=phase_list, max_depth_value=max_depth_value
+        )
+        save_png_with_dpi(interlaced_strip, job_dir / "interlaced.png", ppi=ppi)
+        save_png_with_dpi(depth_strip, job_dir / "depth.png", ppi=ppi)
+
+        metadata = {
+            "job_id": job_id,
+            "type": "calibrate",
+            "block_mm": block_mm,
+            "block_px": block_px,
+            "phases": phase_list,
+            "ppi": ppi,
+            "lpi": lpi,
+            "orientation": orientation,
+            "profile": profile,
+            "max_depth_value": max_depth_value,
+        }
+        (job_dir / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        return RedirectResponse(url=f"/preview/{job_id}", status_code=303)
 
     return app
 

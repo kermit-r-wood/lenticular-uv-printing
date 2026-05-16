@@ -8,9 +8,11 @@ from PIL import Image
 
 from lenticular_raster.core import (
     EUFYMAKE_E1_PRESET,
+    DEFAULT_PHASES,
     DepthProfile,
     Orientation,
     OutputSpec,
+    build_phase_strip,
     generate_depth_map,
     interlace_images,
     size_px_from_mm,
@@ -57,6 +59,22 @@ def _build_parser() -> argparse.ArgumentParser:
     depth.add_argument("--width-mm", type=float, required=True, help="output width in millimeters")
     depth.add_argument("--height-mm", type=float, required=True, help="output height in millimeters")
     depth.set_defaults(func=_depth)
+
+    calibrate = subparsers.add_parser(
+        "calibrate",
+        help="create a phase calibration strip tiling multiple phase values side by side",
+    )
+    _add_common_print_args(calibrate)
+    calibrate.add_argument("--input", action="append", required=True, help="input image; repeat for each view")
+    calibrate.add_argument("--out-interlaced", required=True, help="output interlaced strip PNG path")
+    calibrate.add_argument("--out-depth", required=True, help="output depth strip PNG path")
+    calibrate.add_argument("--block-mm", type=float, default=20.0, help="width and height of each phase block in mm")
+    calibrate.add_argument(
+        "--phases",
+        default=",".join(str(p) for p in DEFAULT_PHASES),
+        help="comma-separated phase values in lens pitches (default: -0.25,-0.125,0,0.125,0.25)",
+    )
+    calibrate.set_defaults(func=_calibrate)
 
     return parser
 
@@ -133,6 +151,38 @@ def _depth(args: argparse.Namespace) -> int:
 
     depth = generate_depth_map(spec, max_value=args.max_depth_value)
     save_png_with_dpi(depth, Path(args.out_depth), ppi=spec.ppi)
+    return 0
+
+
+def _calibrate(args: argparse.Namespace) -> int:
+    phases = [float(p.strip()) for p in args.phases.split(",")]
+    images = [Image.open(path) for path in args.input]
+    block_px, _ = size_px_from_mm(args.block_mm, args.block_mm, args.ppi)
+    base_spec = OutputSpec(
+        width_px=block_px,
+        height_px=block_px,
+        ppi=args.ppi,
+        lpi=args.lpi,
+        orientation=_orientation(args.orientation),
+        phase_pitch=0.0,
+        depth_profile=_profile(args.profile),
+    )
+    if not args.skip_e1_bed_check:
+        from lenticular_raster.core import OutputSpec as _OS, MM_PER_INCH
+        strip_mm = block_px * len(phases) / args.ppi * MM_PER_INCH
+        strip_spec = OutputSpec(
+            width_px=block_px * len(phases),
+            height_px=block_px,
+            ppi=args.ppi,
+            lpi=args.lpi,
+        )
+        strip_spec.validate_against(EUFYMAKE_E1_PRESET)
+
+    interlaced_strip, depth_strip = build_phase_strip(
+        images, base_spec=base_spec, phases=phases, max_depth_value=args.max_depth_value
+    )
+    save_png_with_dpi(interlaced_strip, Path(args.out_interlaced), ppi=args.ppi)
+    save_png_with_dpi(depth_strip, Path(args.out_depth), ppi=args.ppi)
     return 0
 
 

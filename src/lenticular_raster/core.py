@@ -178,6 +178,61 @@ def _frame_indices(
     return np.clip(indices, 0, frame_count - 1)
 
 
+DEFAULT_PHASES = (-0.25, -0.125, 0.0, 0.125, 0.25)
+
+
+def build_phase_strip(
+    images: Sequence[Image.Image],
+    *,
+    base_spec: OutputSpec,
+    phases: Sequence[float] = DEFAULT_PHASES,
+    max_depth_value: int = 65535,
+) -> tuple[Image.Image, Image.Image]:
+    """Return (interlaced_strip, depth_strip) tiling one block per phase value."""
+    if not phases:
+        raise ValueError("phases must not be empty")
+
+    interlaced_blocks: list[Image.Image] = []
+    depth_blocks: list[Image.Image] = []
+
+    for phase in phases:
+        spec = OutputSpec(
+            width_px=base_spec.width_px,
+            height_px=base_spec.height_px,
+            ppi=base_spec.ppi,
+            lpi=base_spec.lpi,
+            orientation=base_spec.orientation,
+            phase_pitch=phase,
+            depth_profile=base_spec.depth_profile,
+        )
+        interlaced = interlace_images(images, spec)
+        depth = generate_depth_map(spec, max_value=max_depth_value)
+
+        # Burn label into interlaced block
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(interlaced)
+        label = f"\u03c6={phase:+.3f}"
+        draw.text((2, 2), label, fill=(255, 255, 255))
+
+        # White stripe on depth block matching label area height (~12px)
+        label_h = 12
+        depth_arr = np.asarray(depth).copy()
+        depth_arr[:label_h, :] = max_depth_value
+        depth = Image.fromarray(depth_arr)
+
+        interlaced_blocks.append(interlaced)
+        depth_blocks.append(depth)
+
+    w, h = base_spec.width_px, base_spec.height_px
+    strip_interlaced = Image.new("RGB", (w * len(phases), h))
+    strip_depth = Image.new("I;16", (w * len(phases), h))
+    for i, (ib, db) in enumerate(zip(interlaced_blocks, depth_blocks)):
+        strip_interlaced.paste(ib, (i * w, 0))
+        strip_depth.paste(db, (i * w, 0))
+
+    return strip_interlaced, strip_depth
+
+
 def _arc_profile(u: np.ndarray) -> np.ndarray:
     # Unit circular cap with low edges and high center, normalized to 0..1.
     half_pitch = 0.5

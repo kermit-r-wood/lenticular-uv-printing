@@ -105,3 +105,49 @@ def test_download_endpoint_serves_generated_png_files(tmp_path: Path) -> None:
     assert download.status_code == 200
     assert download.headers["content-type"] == "image/png"
     assert Image.open(BytesIO(download.content)).mode == "I;16"
+
+
+
+def test_home_page_shows_calibrate_section(tmp_path: Path) -> None:
+    client = TestClient(create_app(output_root=tmp_path))
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "相位校准" in response.text
+    assert 'name="phases"' in response.text
+    assert 'name="block_mm"' in response.text
+
+
+def test_calibrate_creates_phase_strip_job(tmp_path: Path) -> None:
+    client = TestClient(create_app(output_root=tmp_path))
+
+    response = client.post(
+        "/calibrate",
+        data={
+            "block_mm": "10",   # 10mm @ 254ppi = 100px
+            "ppi": "254",
+            "lpi": "10",
+            "orientation": "vertical",
+            "phases": "-0.25,0,0.25",
+            "profile": "sine",
+            "max_depth_value": "65535",
+        },
+        files=[
+            ("images", ("red.png", png_bytes((255, 0, 0)), "image/png")),
+            ("images", ("blue.png", png_bytes((0, 0, 255)), "image/png")),
+        ],
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    job_id = response.headers["location"].rsplit("/", 1)[-1]
+
+    preview = client.get(f"/preview/{job_id}")
+    assert preview.status_code == 200
+
+    interlaced = Image.open(tmp_path / job_id / "interlaced.png")
+    depth = Image.open(tmp_path / job_id / "depth.png")
+    assert interlaced.size == (100 * 3, 100)
+    assert depth.mode == "I;16"
+    assert depth.size == (100 * 3, 100)

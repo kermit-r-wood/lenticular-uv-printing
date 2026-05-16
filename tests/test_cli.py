@@ -101,3 +101,35 @@ def test_cli_make_command_can_output_at_physical_print_size(tmp_path: Path) -> N
 
     assert exit_code == 0
     assert Image.open(interlaced).size == (100, 50)
+
+
+
+def test_cli_calibrate_command_writes_phase_strip(tmp_path: Path) -> None:
+    red = tmp_path / "red.png"
+    blue = tmp_path / "blue.png"
+    interlaced = tmp_path / "calib-interlaced.png"
+    depth = tmp_path / "calib-depth.png"
+    Image.new("RGB", (20, 20), (255, 0, 0)).save(red)
+    Image.new("RGB", (20, 20), (0, 0, 255)).save(blue)
+
+    exit_code = main(
+        [
+            "calibrate",
+            "--input", str(red),
+            "--input", str(blue),
+            "--out-interlaced", str(interlaced),
+            "--out-depth", str(depth),
+            "--ppi", "20",
+            "--lpi", "5",
+            "--block-mm", "25.4",  # 25.4mm @ 20ppi = 20px
+            "--phases=-0.25,0,0.25",
+            "--skip-e1-bed-check",
+        ]
+    )
+
+    assert exit_code == 0
+    interlaced_img = Image.open(interlaced)
+    depth_img = Image.open(depth)
+    assert interlaced_img.size == (20 * 3, 20)
+    assert depth_img.mode == "I;16"
+    assert depth_img.size == (20 * 3, 20)
