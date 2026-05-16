@@ -120,9 +120,9 @@ def test_cli_calibrate_command_writes_phase_strip(tmp_path: Path) -> None:
             "--out-interlaced", str(interlaced),
             "--out-depth", str(depth),
             "--ppi", "20",
-            "--lpi", "5",
             "--block-mm", "25.4",  # 25.4mm @ 20ppi = 20px
             "--phases=-0.25,0,0.25",
+            "--lpis=5,10",
             "--skip-e1-bed-check",
         ]
     )
@@ -130,6 +130,6 @@ def test_cli_calibrate_command_writes_phase_strip(tmp_path: Path) -> None:
     assert exit_code == 0
     interlaced_img = Image.open(interlaced)
     depth_img = Image.open(depth)
-    assert interlaced_img.size == (20 * 3, 20)
+    assert interlaced_img.size == (20 * 3, 20 * 2)  # 3 phases cols, 2 lpis rows
     assert depth_img.mode == "I;16"
-    assert depth_img.size == (20 * 3, 20)
+    assert depth_img.size == (20 * 3, 20 * 2)

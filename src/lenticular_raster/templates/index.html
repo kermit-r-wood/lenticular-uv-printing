@@ -76,7 +76,7 @@
             <div class="grid">
               <label>块尺寸 mm<input name="block_mm" type="number" step="0.1" min="1" value="{{ calibrate_defaults.block_mm }}" required></label>
               <label>PPI<input name="ppi" type="number" min="1" value="{{ calibrate_defaults.ppi }}" required></label>
-              <label>LPI<input name="lpi" type="number" step="0.1" min="1" value="{{ calibrate_defaults.lpi }}" required></label>
+              <label style="grid-column:span 2">LPI 列表（逗号分隔）<input name="lpis" type="text" value="{{ calibrate_defaults.lpis }}" required></label>
               <label>最大深度值<input name="max_depth_value" type="number" min="1" max="65535" value="{{ calibrate_defaults.max_depth_value }}" required></label>
               <label style="grid-column:span 2">相位列表（逗号分隔）<input name="phases" type="text" value="{{ calibrate_defaults.phases }}" required></label>
               <label>方向

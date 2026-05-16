@@ -6,6 +6,7 @@ from PIL import Image
 from lenticular_raster.core import (
     EUFYMAKE_E1_PRESET,
     OutputSpec,
+    build_calibration_grid,
     build_phase_strip,
     generate_depth_map,
     interlace_images,
@@ -119,3 +120,18 @@ def test_build_phase_strip_different_phases_produce_different_columns() -> None:
     block0_col = arr[3, 0]
     block1_col = arr[3, 8]
     assert not np.array_equal(block0_col, block1_col)
+
+
+def test_build_calibration_grid_returns_correct_dimensions() -> None:
+    red = solid(8, 4, (255, 0, 0))
+    blue = solid(8, 4, (0, 0, 255))
+    base_spec = OutputSpec(width_px=8, height_px=4, ppi=8, lpi=2, orientation="vertical")
+
+    interlaced_grid, depth_grid = build_calibration_grid(
+        [red, blue], base_spec=base_spec, lpis=[2, 4], phases=[0.0, 0.25]
+    )
+
+    assert interlaced_grid.mode == "RGB"
+    assert interlaced_grid.size == (8 * 2, 4 * 2)  # cols=phases, rows=lpis
+    assert depth_grid.mode == "I;16"
+    assert depth_grid.size == (8 * 2, 4 * 2)

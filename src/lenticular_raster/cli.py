@@ -8,10 +8,12 @@ from PIL import Image
 
 from lenticular_raster.core import (
     EUFYMAKE_E1_PRESET,
+    DEFAULT_LPIS,
     DEFAULT_PHASES,
     DepthProfile,
     Orientation,
     OutputSpec,
+    build_calibration_grid,
     build_phase_strip,
     generate_depth_map,
     interlace_images,
@@ -73,6 +75,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--phases",
         default=",".join(str(p) for p in DEFAULT_PHASES),
         help="comma-separated phase values in lens pitches (default: -0.25,-0.125,0,0.125,0.25)",
+    )
+    calibrate.add_argument(
+        "--lpis",
+        default=",".join(str(l) for l in DEFAULT_LPIS),
+        help="comma-separated LPI values to scan (default: 40,60)",
     )
     calibrate.set_defaults(func=_calibrate)
 
@@ -156,33 +163,32 @@ def _depth(args: argparse.Namespace) -> int:
 
 def _calibrate(args: argparse.Namespace) -> int:
     phases = [float(p.strip()) for p in args.phases.split(",")]
+    lpis = [float(l.strip()) for l in args.lpis.split(",")]
     images = [Image.open(path) for path in args.input]
     block_px, _ = size_px_from_mm(args.block_mm, args.block_mm, args.ppi)
     base_spec = OutputSpec(
         width_px=block_px,
         height_px=block_px,
         ppi=args.ppi,
-        lpi=args.lpi,
+        lpi=lpis[0],
         orientation=_orientation(args.orientation),
         phase_pitch=0.0,
         depth_profile=_profile(args.profile),
     )
     if not args.skip_e1_bed_check:
-        from lenticular_raster.core import OutputSpec as _OS, MM_PER_INCH
-        strip_mm = block_px * len(phases) / args.ppi * MM_PER_INCH
         strip_spec = OutputSpec(
             width_px=block_px * len(phases),
-            height_px=block_px,
+            height_px=block_px * len(lpis),
             ppi=args.ppi,
-            lpi=args.lpi,
+            lpi=lpis[0],
         )
         strip_spec.validate_against(EUFYMAKE_E1_PRESET)
 
-    interlaced_strip, depth_strip = build_phase_strip(
-        images, base_spec=base_spec, phases=phases, max_depth_value=args.max_depth_value
+    interlaced_grid, depth_grid = build_calibration_grid(
+        images, base_spec=base_spec, lpis=lpis, phases=phases, max_depth_value=args.max_depth_value
     )
-    save_png_with_dpi(interlaced_strip, Path(args.out_interlaced), ppi=args.ppi)
-    save_png_with_dpi(depth_strip, Path(args.out_depth), ppi=args.ppi)
+    save_png_with_dpi(interlaced_grid, Path(args.out_interlaced), ppi=args.ppi)
+    save_png_with_dpi(depth_grid, Path(args.out_depth), ppi=args.ppi)
     return 0
 
 

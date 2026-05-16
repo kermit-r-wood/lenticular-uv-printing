@@ -116,6 +116,7 @@ def test_home_page_shows_calibrate_section(tmp_path: Path) -> None:
     assert response.status_code == 200
     assert "相位校准" in response.text
     assert 'name="phases"' in response.text
+    assert 'name="lpis"' in response.text
     assert 'name="block_mm"' in response.text
 
 
@@ -127,9 +128,9 @@ def test_calibrate_creates_phase_strip_job(tmp_path: Path) -> None:
         data={
             "block_mm": "10",   # 10mm @ 254ppi = 100px
             "ppi": "254",
-            "lpi": "10",
             "orientation": "vertical",
             "phases": "-0.25,0,0.25",
+            "lpis": "10,20",
             "profile": "sine",
             "max_depth_value": "65535",
         },
@@ -148,6 +149,6 @@ def test_calibrate_creates_phase_strip_job(tmp_path: Path) -> None:
 
     interlaced = Image.open(tmp_path / job_id / "interlaced.png")
     depth = Image.open(tmp_path / job_id / "depth.png")
-    assert interlaced.size == (100 * 3, 100)
+    assert interlaced.size == (100 * 3, 100 * 2)  # 3 phases cols, 2 lpis rows
     assert depth.mode == "I;16"
-    assert depth.size == (100 * 3, 100)
+    assert depth.size == (100 * 3, 100 * 2)

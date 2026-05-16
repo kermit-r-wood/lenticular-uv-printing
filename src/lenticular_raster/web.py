@@ -13,8 +13,10 @@ from PIL import Image
 
 from lenticular_raster.core import (
     EUFYMAKE_E1_PRESET,
+    DEFAULT_LPIS,
     DEFAULT_PHASES,
     OutputSpec,
+    build_calibration_grid,
     build_phase_strip,
     generate_depth_map,
     interlace_images,
@@ -59,6 +61,7 @@ def create_app(output_root: str | Path = DEFAULT_OUTPUT_ROOT) -> FastAPI:
                     "ppi": EUFYMAKE_E1_PRESET.ppi,
                     "lpi": 60,
                     "phases": ",".join(str(p) for p in DEFAULT_PHASES),
+                    "lpis": ",".join(str(l) for l in DEFAULT_LPIS),
                     "max_depth_value": 65535,
                 },
             },
@@ -165,9 +168,9 @@ def create_app(output_root: str | Path = DEFAULT_OUTPUT_ROOT) -> FastAPI:
         images: Annotated[list[UploadFile], File()],
         block_mm: Annotated[float, Form()],
         ppi: Annotated[int, Form()],
-        lpi: Annotated[float, Form()],
         orientation: Annotated[str, Form()],
         phases: Annotated[str, Form()],
+        lpis: Annotated[str, Form()],
         profile: Annotated[str, Form()],
         max_depth_value: Annotated[int, Form()],
     ):
@@ -176,17 +179,20 @@ def create_app(output_root: str | Path = DEFAULT_OUTPUT_ROOT) -> FastAPI:
 
         try:
             phase_list = [float(p.strip()) for p in phases.split(",") if p.strip()]
+            lpi_list = [float(l.strip()) for l in lpis.split(",") if l.strip()]
         except ValueError:
-            raise HTTPException(status_code=400, detail="相位格式错误，请用逗号分隔的数字")
+            raise HTTPException(status_code=400, detail="参数格式错误，请用逗号分隔的数字")
         if not phase_list:
             raise HTTPException(status_code=400, detail="至少需要一个相位值")
+        if not lpi_list:
+            raise HTTPException(status_code=400, detail="至少需要一个 LPI 值")
 
         block_px, _ = size_px_from_mm(block_mm, block_mm, ppi)
         base_spec = OutputSpec(
             width_px=block_px,
             height_px=block_px,
             ppi=ppi,
-            lpi=lpi,
+            lpi=lpi_list[0],
             orientation=_orientation(orientation),
             phase_pitch=0.0,
             depth_profile=_profile(profile),
@@ -204,11 +210,11 @@ def create_app(output_root: str | Path = DEFAULT_OUTPUT_ROOT) -> FastAPI:
             upload_path.write_bytes(await upload.read())
             loaded_images.append(Image.open(upload_path).convert("RGB"))
 
-        interlaced_strip, depth_strip = build_phase_strip(
-            loaded_images, base_spec=base_spec, phases=phase_list, max_depth_value=max_depth_value
+        interlaced_grid, depth_grid = build_calibration_grid(
+            loaded_images, base_spec=base_spec, lpis=lpi_list, phases=phase_list, max_depth_value=max_depth_value
         )
-        save_png_with_dpi(interlaced_strip, job_dir / "interlaced.png", ppi=ppi)
-        save_png_with_dpi(depth_strip, job_dir / "depth.png", ppi=ppi)
+        save_png_with_dpi(interlaced_grid, job_dir / "interlaced.png", ppi=ppi)
+        save_png_with_dpi(depth_grid, job_dir / "depth.png", ppi=ppi)
 
         metadata = {
             "job_id": job_id,
@@ -216,8 +222,8 @@ def create_app(output_root: str | Path = DEFAULT_OUTPUT_ROOT) -> FastAPI:
             "block_mm": block_mm,
             "block_px": block_px,
             "phases": phase_list,
+            "lpis": lpi_list,
             "ppi": ppi,
-            "lpi": lpi,
             "orientation": orientation,
             "profile": profile,
             "max_depth_value": max_depth_value,
