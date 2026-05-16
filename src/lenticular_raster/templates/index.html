@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>光栅画生成器</title>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body>
+    <main class="workspace">
+      <section class="panel intro">
+        <div>
+          <p class="eyebrow">eufyMake E1</p>
+          <h1>光栅画生成器</h1>
+          <p class="muted">上传 2 张或多张视角图片，生成底部交错图和 16-bit 光油深度图。</p>
+        </div>
+        <dl class="specs">
+          <div><dt>默认分辨率</dt><dd>{{ preset.ppi }} PPI</dd></div>
+          <div><dt>打印面积</dt><dd>{{ preset.max_width_mm }} x {{ preset.max_height_mm }} mm</dd></div>
+          <div><dt>最大浮雕</dt><dd>{{ preset.max_emboss_height_mm }} mm</dd></div>
+        </dl>
+      </section>
+
+      <form class="tool" action="/generate" method="post" enctype="multipart/form-data">
+        <section class="panel">
+          <h2>输入图片</h2>
+          <label class="file-drop">
+            <span>选择图片</span>
+            <input type="file" name="images" accept="image/*" multiple required>
+          </label>
+          <p class="hint">至少 2 张。生成时会缩放到目标打印尺寸。</p>
+        </section>
+
+        <section class="panel controls">
+          <h2>打印参数</h2>
+          <div class="grid">
+            <label>宽度 mm<input name="width_mm" type="number" step="0.1" min="1" value="{{ defaults.width_mm }}" required></label>
+            <label>高度 mm<input name="height_mm" type="number" step="0.1" min="1" value="{{ defaults.height_mm }}" required></label>
+            <label>PPI<input name="ppi" type="number" min="1" value="{{ defaults.ppi }}" required></label>
+            <label>LPI<input name="lpi" type="number" step="0.1" min="1" value="{{ defaults.lpi }}" required></label>
+            <label>相位<input name="phase" type="number" step="0.001" value="{{ defaults.phase }}" required></label>
+            <label>最大深度值<input name="max_depth_value" type="number" min="1" max="65535" value="{{ defaults.max_depth_value }}" required></label>
+            <label>方向
+              <select name="orientation">
+                <option value="vertical" selected>竖向光栅</option>
+                <option value="horizontal">横向光栅</option>
+              </select>
+            </label>
+            <label>曲线
+              <select name="profile">
+                <option value="sine" selected>正弦</option>
+                <option value="arc">圆弧</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel action-panel">
+          <h2>输出</h2>
+          <p class="muted">提交后进入预览页，可以查看交错图、深度图并下载 PNG 文件。</p>
+          <button type="submit">生成预览</button>
+        </section>
+      </form>
+    </main>
+  </body>
+</html>
