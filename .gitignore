@@ -1,8 +1,14 @@
-.venv/
-__pycache__/
-*.pyc
-outputs/
-.pytest_cache/
-summary.md
+# Node / Vite
+node_modules/
+dist/
+*.log
+.vite/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
 
-docs/
+# Test fixtures (gitignored sanity outputs)
+out/
+
+# OS / IDE
+.DS_Store
+Thumbs.db

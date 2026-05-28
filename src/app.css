@@ -211,3 +211,77 @@ dd {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* additions for SPA states */
+.warning {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #ddb777;
+  background: #fff8e6;
+  border-radius: 6px;
+  color: #5b3f10;
+  font-size: 13px;
+}
+
+.error {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #d99898;
+  background: #fcebeb;
+  border-radius: 6px;
+  color: #6c1f1f;
+  font-size: 13px;
+}
+
+button[disabled] {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.status {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.hidden {
+  display: none !important;
+}
+
+
+/* language toggle (top-right corner) */
+.lang-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--panel);
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.lang-btn {
+  min-height: 32px;
+  min-width: 36px;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.lang-btn + .lang-btn {
+  border-left: 1px solid var(--line);
+}
+
+.lang-btn.active {
+  background: var(--accent);
+  color: #fff;
+}

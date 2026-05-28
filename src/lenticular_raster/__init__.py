@@ -1,1 +1,0 @@
-"""Lenticular raster generation tools."""

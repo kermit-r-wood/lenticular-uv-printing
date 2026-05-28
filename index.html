@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>光栅画生成器</title>
+    <link rel="stylesheet" href="/src/app.css" />
+  </head>
+  <body>
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button type="button" class="lang-btn" data-locale="zh">中</button>
+      <button type="button" class="lang-btn" data-locale="en">EN</button>
+    </div>
+    <main class="workspace">
+      <section class="panel intro">
+        <div>
+          <p class="eyebrow" data-i18n="intro.eyebrow">eufyMake E1</p>
+          <h1 data-i18n="intro.heading">光栅画生成器</h1>
+          <p class="muted" data-i18n="intro.tagline">
+            上传 2 张或多张视角图片，生成底部交错图和 16-bit 光油深度图。
+          </p>
+        </div>
+        <dl class="specs">
+          <div>
+            <dt data-i18n="intro.specs.resolution">默认分辨率</dt>
+            <dd>1440 PPI</dd>
+          </div>
+          <div>
+            <dt data-i18n="intro.specs.printArea">打印面积</dt>
+            <dd>330 x 420 mm</dd>
+          </div>
+          <div>
+            <dt data-i18n="intro.specs.maxEmboss">最大浮雕</dt>
+            <dd>5 mm</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section id="result-section" class="hidden">
+        <section class="panel intro">
+          <div>
+            <p class="eyebrow" id="result-eyebrow" data-i18n="result.eyebrow.make">
+              生成
+            </p>
+            <h1 data-i18n="result.heading">预览与下载</h1>
+            <p class="muted" id="result-summary"></p>
+          </div>
+          <button
+            type="button"
+            class="secondary"
+            id="back-btn"
+            data-i18n="result.back"
+          >
+            返回修改
+          </button>
+        </section>
+        <section class="preview-grid">
+          <article class="panel preview-card">
+            <div class="card-head">
+              <h2 data-i18n="result.interlaced.heading">交错图</h2>
+              <a
+                id="download-interlaced"
+                download="interlaced.png"
+                data-i18n="result.interlaced.download"
+                >下载 interlaced.png</a
+              >
+            </div>
+            <img id="preview-interlaced" alt="interlaced preview" />
+          </article>
+          <article class="panel preview-card">
+            <div class="card-head">
+              <h2 data-i18n="result.depth.heading">深度图</h2>
+              <a
+                id="download-depth"
+                download="depth.png"
+                data-i18n="result.depth.download"
+                >下载 depth.png</a
+              >
+            </div>
+            <img id="preview-depth" alt="depth preview" />
+          </article>
+        </section>
+      </section>
+
+      <form id="generate-form" class="tool">
+        <section class="panel">
+          <h2 data-i18n="form.section.input">输入图片</h2>
+          <label class="file-drop">
+            <span data-i18n="form.input.choose">选择图片</span>
+            <input type="file" name="images" accept="image/*" multiple required />
+          </label>
+          <p class="hint" data-i18n="form.input.hint">
+            至少 2 张。生成时会缩放到目标打印尺寸。
+          </p>
+        </section>
+
+        <section class="panel controls">
+          <h2 data-i18n="form.section.params">打印参数</h2>
+          <div class="grid">
+            <label
+              ><span data-i18n="form.field.widthMm">宽度 mm</span
+              ><input
+                name="width_mm"
+                type="number"
+                step="0.1"
+                min="1"
+                value="50"
+                required
+            /></label>
+            <label
+              ><span data-i18n="form.field.heightMm">高度 mm</span
+              ><input
+                name="height_mm"
+                type="number"
+                step="0.1"
+                min="1"
+                value="50"
+                required
+            /></label>
+            <label
+              ><span data-i18n="form.field.ppi">PPI</span
+              ><input name="ppi" type="number" min="1" value="1440" required
+            /></label>
+            <label
+              ><span data-i18n="form.field.lpi">LPI</span
+              ><input
+                name="lpi"
+                type="number"
+                step="0.1"
+                min="1"
+                value="60"
+                required
+            /></label>
+            <label
+              ><span data-i18n="form.field.phase">相位</span
+              ><input
+                name="phase"
+                type="number"
+                step="0.001"
+                value="0"
+                required
+            /></label>
+            <label
+              ><span data-i18n="form.field.maxDepth">最大深度值</span
+              ><input
+                name="max_depth_value"
+                type="number"
+                min="1"
+                max="65535"
+                value="65535"
+                required
+            /></label>
+            <label
+              ><span data-i18n="form.field.orientation">方向</span>
+              <select name="orientation">
+                <option value="vertical" selected data-i18n="form.option.vertical">
+                  竖向光栅
+                </option>
+                <option value="horizontal" data-i18n="form.option.horizontal">
+                  横向光栅
+                </option>
+              </select>
+            </label>
+            <label
+              ><span data-i18n="form.field.profile">曲线</span>
+              <select name="profile">
+                <option value="sine" selected data-i18n="form.option.sine">
+                  正弦
+                </option>
+                <option value="arc" data-i18n="form.option.arc">圆弧</option>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel action-panel">
+          <h2 data-i18n="form.section.output">输出</h2>
+          <p class="muted" data-i18n="form.output.tagline">
+            提交后预览交错图、深度图，并下载 PNG 文件。
+          </p>
+          <button type="submit" id="generate-submit" data-i18n="form.output.submit">
+            生成预览
+          </button>
+          <p class="status hidden" id="generate-status"></p>
+          <p class="warning hidden" id="generate-warning"></p>
+          <p class="error hidden" id="generate-error"></p>
+        </section>
+      </form>
+
+      <details class="tool" id="calibrate-tool">
+        <summary><h2 data-i18n="calib.section.heading">相位校准</h2></summary>
+        <form id="calibrate-form">
+          <section class="panel">
+            <p class="muted" data-i18n="calib.tagline">
+              生成多个 LPI × 相位的测试块拼合图，打印后对比找到最佳参数。
+            </p>
+            <label class="file-drop">
+              <span data-i18n="form.input.choose">选择图片</span>
+              <input type="file" name="images" accept="image/*" multiple required />
+            </label>
+            <p class="hint" data-i18n="calib.input.hint">至少 2 张视角图片。</p>
+          </section>
+          <section class="panel controls">
+            <div class="grid">
+              <label
+                ><span data-i18n="calib.field.blockMm">块尺寸 mm</span
+                ><input
+                  name="block_mm"
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  value="20"
+                  required
+              /></label>
+              <label
+                ><span data-i18n="form.field.ppi">PPI</span
+                ><input name="ppi" type="number" min="1" value="1440" required
+              /></label>
+              <label style="grid-column: span 2"
+                ><span data-i18n="calib.field.lpis">LPI 列表（逗号分隔）</span
+                ><input name="lpis" type="text" value="40,60" required
+              /></label>
+              <label
+                ><span data-i18n="form.field.maxDepth">最大深度值</span
+                ><input
+                  name="max_depth_value"
+                  type="number"
+                  min="1"
+                  max="65535"
+                  value="65535"
+                  required
+              /></label>
+              <label style="grid-column: span 2"
+                ><span data-i18n="calib.field.phases">相位列表（逗号分隔）</span
+                ><input
+                  name="phases"
+                  type="text"
+                  value="-0.25,-0.125,0,0.125,0.25"
+                  required
+              /></label>
+              <label
+                ><span data-i18n="form.field.orientation">方向</span>
+                <select name="orientation">
+                  <option value="vertical" selected data-i18n="form.option.vertical">
+                    竖向光栅
+                  </option>
+                  <option value="horizontal" data-i18n="form.option.horizontal">
+                    横向光栅
+                  </option>
+                </select>
+              </label>
+              <label
+                ><span data-i18n="form.field.profile">曲线</span>
+                <select name="profile">
+                  <option value="sine" selected data-i18n="form.option.sine">
+                    正弦
+                  </option>
+                  <option value="arc" data-i18n="form.option.arc">圆弧</option>
+                </select>
+              </label>
+            </div>
+          </section>
+          <section class="panel action-panel">
+            <button type="submit" id="calibrate-submit" data-i18n="calib.submit">
+              生成校准图
+            </button>
+            <p class="status hidden" id="calibrate-status"></p>
+            <p class="warning hidden" id="calibrate-warning"></p>
+            <p class="error hidden" id="calibrate-error"></p>
+          </section>
+        </form>
+      </details>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
