@@ -1,11 +1,10 @@
-# Lenticular Raster
+# Lenticular Raster (光栅画生成器)
+
+[English Version](./README_EN.md)
 
 > **在线访问地址**：[https://kermit-r-wood.github.io/lenticular-uv-printing/](https://kermit-r-wood.github.io/lenticular-uv-printing/)
 
-浏览器内运行的光栅画生成器：上传 2 张以上视角图片，生成底部交错图（8-bit RGB
-PNG）和 16-bit 光油深度图（带 1440 PPI 元数据），用于 eufyMake E1 等 UV
-打印机。**纯前端，不需要服务器，构建产物可以双击打开 `dist/index.html`
-直接用，也可托管到 GitHub Pages 或任意静态站点。**
+浏览器内运行的光栅画生成器：上传 2 张以上视角图片，生成底部交错图（8-bit RGB PNG）和 16-bit 光油深度图（带 1440 PPI 元数据），用于 eufyMake E1 等 UV 打印机。**纯前端，不需要服务器，构建产物可以双击打开 `dist/index.html` 直接用，也可托管到 GitHub Pages 或任意静态站点。**
 
 ## 默认面向 eufyMake E1
 
@@ -31,15 +30,12 @@ npm run dev      # 启动 Vite 开发服务器（默认 http://localhost:5173）
 npm test         # 单元测试 + 端到端 sanity（输出到 out/）
 ```
 
-51 个单元测试覆盖：lens 周期 / 像素物理映射、sine + arc 剖面、按列与按行的
-帧索引、E1 床尺寸校验、PNG 编码 (8-bit RGB + 16-bit 灰度) 与 pHYs DPI 元数据、
-校准网格几何。
+51 个单元测试覆盖：lens 周期 / 像素物理映射、sine + arc 剖面、按列与按行的帧索引、E1 床尺寸校验、PNG 编码 (8-bit RGB + 16-bit 灰度) 与 pHYs DPI 元数据、校准网格几何。
 
 ## 构建与部署
 
 ```powershell
 npm run build    # 产出 dist/，包含 index.html + assets/
-npm run preview  # 本地预览生产构建
 ```
 
 `vite.config.ts` 中 `base: "./"` 让 `dist/` 与部署路径解耦：
@@ -52,10 +48,8 @@ npm run preview  # 本地预览生产构建
 
 打开站点后：
 
-1. **生成** —— 上传 ≥2 张视角图片，填宽高（mm）、PPI、LPI、相位、深度曲线，
-   提交后预览交错图和 16-bit 深度图，点链接下载两张 PNG。
-2. **相位校准** —— 折叠区域里展开。一次生成多个 LPI × 多个相位的测试块拼图
-   （行 = LPI，列 = 相位），每块左上角带文字标签。打印一张就能挑出最佳参数。
+1. **生成** —— 上传 ≥2 张视角图片，填宽高（mm）、PPI、LPI、相位、深度曲线，提交后预览交错图和 16-bit 深度图，点链接下载两张 PNG。
+2. **相位校准** —— 折叠区域里展开。一次生成多个 LPI × 多个相位的测试块拼图（行 = LPI，列 = 相位），每块左上角带文字标签。打印一张就能挑出最佳参数。
 
 ## 参数说明
 
@@ -69,16 +63,14 @@ npm run preview  # 本地预览生产构建
 | 方向 | `vertical` 左右视角切换 / `horizontal` 上下视角切换 |
 | 最大深度值 | 16-bit 灰度上限。例如 `32768` 限制成 50% 浮雕高 |
 
-第一次物理校准建议：用 20 mm 块 × 多 LPI（`30,40,60`）× 单相位 `0`，找出最低
-浮雕能稳定切换的 LPI；然后用最佳 LPI 扫相位定位。
+第一次物理校准建议：用 20 mm 块 × 多 LPI（`30,40,60`）× 单相位 `0`，找出最低浮雕能稳定切换的 LPI；然后用最佳 LPI 扫相位定位。
 
 ## 示例素材
 
 `examples/ab-flip/` 里有现成的双视角和三视角源图，可以直接拖进网页测试：
 
 - `A-left-view.png` / `B-right-view.png` / `C-center-view.png`
-- `ab-flip-interlaced-42mm-60lpi.png` / `ab-flip-depth-42mm-60lpi.png` 是
-  早期 Python 版本的示例输出，作为视觉参考保留
+- `ab-flip-interlaced-42mm-60lpi.png` / `ab-flip-depth-42mm-60lpi.png` 是早期 Python 版本的示例输出，作为视觉参考保留
 
 ## 技术栈
 
@@ -93,11 +85,7 @@ npm run preview  # 本地预览生产构建
 
 ## 已知限制
 
-- 计算放在主线程，渲染期间页面会有几秒卡顿。≤100 mm × 100 mm 体感可接受；
-  更大尺寸建议二期挪到 Web Worker。
-- Canvas 文字标签在 1440 PPI 下偏小（11 px ≈ 0.2 mm）。校准块上肉眼勉强能
-  辨认，需要更清晰可二期做 LPI 自适应字号。
-- 上传超大源图（4K+ JPG）`createImageBitmap` 会占内存高，pica 缩放也耗时。
-  建议源图压到目标分辨率 2–3 倍以内。
-- Lanczos3 实现细节与 PIL 的 LANCZOS 不完全一致，缩放结果有 ≤ 1 LSB 量级
-  的差异（不影响视觉与光栅效果）。
+- 计算放在主线程，渲染期间页面会有几秒卡顿。≤100 mm × 100 mm 体感可接受；更大尺寸建议二期挪到 Web Worker。
+- Canvas 文字标签在 1440 PPI 下偏小（11 px ≈ 0.2 mm）。校准块上肉眼勉强能辨认，需要更清晰可二期做 LPI 自适应字号。
+- 上传超大源图（4K+ JPG）`createImageBitmap` 会占内存高，pica 缩放也耗时。建议源图压到目标分辨率 2–3 倍以内。
+- Lanczos3 实现细节与 PIL 的 LANCZOS 不完全一致，缩放结果有 ≤ 1 LSB 量级的差异（不影响视觉与光栅效果）。
